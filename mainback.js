@@ -9,7 +9,6 @@ const { sqlLite3DatabaseService } = require("./xpholder/database/sqlite");
 
 const { getActiveCharacterIndex, getXp, getRoleMultiplier, getLevelInfo, getTier, logCommand, logError } = require("./xpholder/utils");
 const { XPHOLDER_COLOUR, XPHOLDER_ICON_URL } = require("./xpholder/config.json")
-
 /*
 -----------------------
 LOADING ENV VARS (.env)
@@ -21,9 +20,6 @@ dotenv.config();
 LOADING DISCORD PREMISSIONS
 ---------------------------
 */
-const date = new Date().toISOString();
-const timestamp = Date.now();
-
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -171,7 +167,7 @@ client.on('messageCreate', async message => {
         if (!channel) { return; }
 
         if (gService.channels[channel.id] == 0){ return; }
-	console.log("$ Channel " + channel.name + ", Author " +  message.author.displayName + ", id " + message.id + ", Timestamp " + timestamp)
+	console.log(channel.name)
 
 
         const xp = getXp(messageCount, roleBonus, gService.channels[channel.id], gService.config["xpPerPostDivisor"], gService.config["xpPerPostFormula"]);

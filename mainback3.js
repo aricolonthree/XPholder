@@ -7,9 +7,8 @@ const sqlite3 = require("sqlite3");
 const { guildService } = require("./xpholder/services/guild");
 const { sqlLite3DatabaseService } = require("./xpholder/database/sqlite");
 
-const { getActiveCharacterIndex, getXp, getRoleMultiplier, getLevelInfo, getTier, logCommand, logError } = require("./xpholder/utils");
+const { getActiveCharacterIndex, getXp, getRoleMultiplier, getLevelInfo, getTier, logCommand, logError, logXP} = require("./xpholder/utils");
 const { XPHOLDER_COLOUR, XPHOLDER_ICON_URL } = require("./xpholder/config.json")
-
 /*
 -----------------------
 LOADING ENV VARS (.env)
@@ -21,9 +20,8 @@ dotenv.config();
 LOADING DISCORD PREMISSIONS
 ---------------------------
 */
-const date = new Date().toISOString();
-const timestamp = Date.now();
 
+const timestamp = Date.now();
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -161,8 +159,10 @@ client.on('messageCreate', async message => {
 
 
         let channel = await guild.channels.fetch(message.channelId);
+	if (message.content.startsWith('tul')) { return;}
 
-	if (channel.name.includes('ooc')) {return;}
+		if (channel.name.toLowerCase().includes('ooc')) {return;}
+		console.log(channel.name)
         while (channel) {
             if (channel.id in gService.channels) { break; }
             channel = await guild.channels.fetch(channel.parentId);
@@ -175,7 +175,7 @@ client.on('messageCreate', async message => {
 
 
         const xp = getXp(messageCount, roleBonus, gService.channels[channel.id], gService.config["xpPerPostDivisor"], gService.config["xpPerPostFormula"]);
-
+		await logXP(messageCount, "Guild",  message.author.displayName, xp, channel.name, client)
         if (player._roles.includes(gService.config["xpShareRoleId"])){
             const playerCharacters = await gService.getAllCharacters(player.id);
             for (let subCharacter of playerCharacters) {
