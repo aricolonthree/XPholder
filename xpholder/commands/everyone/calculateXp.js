@@ -55,7 +55,7 @@ module.exports = {
             .setFields(
                 { inline: false, name: "Exponential", value: `\`( ${channelXpPerPost} [channel xp per post] + ${wordCount} [word count] / ${xpPerPostDivisor} [xp per post divisor] ) * (1 + ${wordCount} [word count] / ${xpPerPostDivisor} [xp per post divisor] ) * ${roleBoost} [role bonus]\`\n= **${getXp(wordCount, roleBoost, channelXpPerPost, xpPerPostDivisor, "exponential")}**` },
                 { inline: false, name: "Flat", value: `\`${channelXpPerPost} [channel xp per post] * ${roleBoost} [role bonus]\`\n= **${getXp(wordCount, roleBoost, channelXpPerPost, xpPerPostDivisor, "flat")}**` },
-                { inline: false, name: "Linear", value: `\`( ${channelXpPerPost} [channel xp per post] + ${wordCount} [word count]/ ${xpPerPostDivisor} [xp per post divisor] ) * ${roleBoost} [role bonus]\`\n= **${getXp(wordCount, roleBoost, channelXpPerPost, xpPerPostDivisor, "linear")}**` },
+                { inline: false, name: "Linear", value: `\`( (${wordCount} [word count] * ${channelXpPerPost} [channel xp per post]) / ${xpPerPostDivisor} [xp per post divisor] ) * ${roleBoost} [role bonus]\`\n= **${getXp(wordCount, roleBoost, channelXpPerPost, xpPerPostDivisor, "linear")}**` },
             )
             .setFooter({ text: `Like the bot? Click 'Calculate XP' to visit the dev server!` })
             .setThumbnail(XPHOLDER_ICON_URL)

@@ -277,13 +277,13 @@ function createButtonEvents(guildService, interaction, player, replyMessage, pla
                         ------------------------
                         */
                         for (let charIndex = 1; charIndex <= guildService.config.characterCount; charIndex++){
-                            removeRoles.push(await guild.roles.fetch(guildService.config[`character${charIndex}RoleId`]));
+									removeRoles.push(await guild.roles.fetch(guildService.config[`character${charIndex}RoleId`]));
                         }
                         for (let tierIndex = 1; tierIndex <= 4; tierIndex++){
                             removeRoles.push(await guild.roles.fetch(guildService.config[`tier${tierIndex}RoleId`]));
                         }
 
-                        copyOfEmbed.setDescription("**RETIRED**")
+                        copyOfEmbed.setDescription("**RETIRED** !!!Remember to update your active character!!!")
                         copyOfEmbed.setColor(XPHOLDER_RETIRE_COLOUR);
                         
                         await player.roles.remove(removeRoles);
