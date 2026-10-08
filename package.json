@@ -1,0 +1,27 @@
+{
+  "name": "ff-xpholder",
+  "version": "1.0.0",
+  "description": "",
+  "repository": {
+    "type": "git",
+    "url": "ff:aricolonthree/XPholder.git"
+  },
+  "license": "MIT",
+  "type": "commonjs",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "bindings": "^1.5.0",
+    "discord.js": "^14.27.0",
+    "dotenv": "^18.0.6",
+    "fs": "^0.0.1-security",
+    "node-gyp": "^13.1.0",
+    "sqlite3": "^6.0.1"
+  },
+  "allowScripts": {
+    "sqlite3@6.0.1": true,
+    "node-gyp@12.4.0": true
+  }
+}
