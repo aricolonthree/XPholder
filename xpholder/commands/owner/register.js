@@ -28,8 +28,8 @@ module.exports = {
         ----------
         */
         if (interaction.user.id != interaction.guild.ownerId){
-            await interaction.editReply("Sorry, but you are not the owner of the server, and can not use this command.")
-            return;
+             await interaction.editReply("Sorry, but you are not the owner of the server, and can not use this command.")
+             return;
         }
         /*
         --------------
