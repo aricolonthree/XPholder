@@ -24,9 +24,9 @@ class sqlLite3DatabaseService {
         })
     }
 
-    async execute(query) {
+    async execute(query, params = []) {
         return await new Promise((resolve, reject) => {
-            this.database.run(query, (err, data) => {
+            this.database.run(query, params, (err, data) => {
                 if (err) { console.error(err.message); resolve(false); return; }
                 resolve(true);
             })

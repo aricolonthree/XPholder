@@ -79,10 +79,11 @@ function buildGettingStartedEmbed() {
             },
             { name: "How To Award XP Manually", value: "There are two ways to award xp manually. The first, is a mod of the server can use **/award_xp** , and fill out the information on the player they are awarding. The second, is that players can use **/request_xp** and await for a mod to approve their request ( there is a server option to auto approve all requests in **/edit_config** )", inline: false },
         )
+        .addFields({ name: "Level-Up Requirements", value: "By default, entering levels 5, 11, and 17 requires a moderator award. XP keeps accumulating while blocked. Moderators use **/award_level_up** with the player, character, and level being unlocked. Owners can turn requirements off or require them at every level with **/edit_config**. View your status with **/xp**." })
         .setFooter({ text: `Like the bot? Have questions? Click 'Getting Started' to visit the dev server!` })
         .setThumbnail(XPHOLDER_ICON_URL)
         .setColor(XPHOLDER_COLOUR)
-        .setURL(DEV_SERVER_URL);
+        .setURL(DEV_SERVER_URL || null);
 }
 
 function buildXpPerPostEmbed() {

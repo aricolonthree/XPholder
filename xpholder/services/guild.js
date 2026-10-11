@@ -1,5 +1,6 @@
 const { listOfObjsToObj } = require("../utils")
 const { LEVELS } = require("../config.json")
+const { REQUIREMENT_DEFAULTS, getLevelInfo, requirementBit, requirementMask, requirementsThroughLevel } = require("../progression");
 
 class guildService {
     constructor(database) {
@@ -17,8 +18,9 @@ class guildService {
     */
     async init() {
         if (!await this.isRegistered()) { return }
-        this.config = await this.loadInit("config", "name", "value");
         this.levels = await this.loadInit("levels", "level", "xp_to_next");
+        await this.migrateLevelUpRequirements();
+        this.config = await this.loadInit("config", "name", "value");
         this.roles = await this.loadInit("roles", "role_id", "xp_bonus");
         this.channels = await this.loadInit("channels", "channel_id", "xp_per_post");
     }
@@ -28,6 +30,38 @@ class guildService {
         let sqlTable = await this.database.getAll(`SELECT * FROM ${table};`)
         await this.database.closeDatabase();
         return listOfObjsToObj(sqlTable, primaryKey, value);
+    }
+
+    async migrateLevelUpRequirements() {
+        await this.database.openDatabase();
+        const run = async (sql, params) => {
+            if (!await this.database.execute(sql, params)) { throw new Error("Level-up requirement migration failed."); }
+        };
+        try {
+            // Serializes first-use migrations from concurrent messages/commands.
+            await run("BEGIN IMMEDIATE;");
+            const columns = await this.database.getAll("PRAGMA table_info(characters);");
+            if (!columns) { throw new Error("Could not read the character schema."); }
+            if (!columns.some(column => column.name === "level_up_requirements_met")) {
+                await run("ALTER TABLE characters ADD COLUMN level_up_requirements_met INTEGER NOT NULL DEFAULT 0;");
+                const characters = await this.database.getAll("SELECT character_id, xp FROM characters;");
+                if (!characters) { throw new Error("Could not read existing characters."); }
+                for (const character of characters) {
+                    // Preserve levels already earned before this feature was installed.
+                    const mask = requirementsThroughLevel(getLevelInfo(this.levels, character.xp).level);
+                    await run("UPDATE characters SET level_up_requirements_met = ? WHERE character_id = ?;", [mask, character.character_id]);
+                }
+            }
+            for (const [name, value] of Object.entries(REQUIREMENT_DEFAULTS)) {
+                await run("INSERT OR IGNORE INTO config (name, value) VALUES (?, ?);", [name, value]);
+            }
+            await run("COMMIT;");
+        } catch (error) {
+            await this.database.execute("ROLLBACK;");
+            throw error;
+        } finally {
+            await this.database.closeDatabase();
+        }
     }
 
     /*
@@ -80,8 +114,10 @@ class guildService {
     }
 
     async insertCharacter(character) {
+        const mask = requirementMask(character.level_up_requirements_met);
         await this.database.openDatabase();
-        const response = await this.database.execute(`INSERT INTO characters (character_id, character_index, name, sheet_url, picture_url, player_id, xp) VALUES ( "${character.character_id}", ${character.character_index}, "${character.name}", "${character.sheet_url}", "${character.picture_url}", "${character.player_id}", ${character.xp} );`);
+        const response = await this.database.execute("INSERT INTO characters (character_id, character_index, name, sheet_url, picture_url, player_id, xp, level_up_requirements_met) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
+            [character.character_id, character.character_index, character.name, character.sheet_url, character.picture_url, character.player_id, character.xp, mask]);
         await this.database.closeDatabase();
         return response;
     }
@@ -105,6 +141,32 @@ class guildService {
         const response = await this.database.execute(`UPDATE characters SET xp = ${character.xp} WHERE character_id = "${character.character_id}";`)
         await this.database.closeDatabase();
         return response;
+    }
+
+    async awardLevelUpRequirement(character, level) {
+        const bit = requirementBit(level);
+        await this.database.openDatabase();
+        try {
+            // OR retains other awards even when two moderators award concurrently.
+            if (!await this.database.execute("UPDATE characters SET level_up_requirements_met = level_up_requirements_met | ? WHERE character_id = ?;", [bit, character.character_id])) {
+                throw new Error("Could not award the level-up requirement.");
+            }
+        } finally {
+            await this.database.closeDatabase();
+        }
+        return this.getCharacter(character.character_id);
+    }
+
+    async setCharacterRequirements(character) {
+        const mask = requirementMask(character.level_up_requirements_met);
+        await this.database.openDatabase();
+        try {
+            if (!await this.database.execute("UPDATE characters SET level_up_requirements_met = ? WHERE character_id = ?;", [mask, character.character_id])) {
+                throw new Error("Could not save the level-up requirements.");
+            }
+        } finally {
+            await this.database.closeDatabase();
+        }
     }
 
     /*
@@ -230,7 +292,7 @@ class guildService {
     }
     async createCharactersTable() {
         await this.database.openDatabase();
-        const response = await this.database.execute("CREATE TABLE characters ( character_id STRING PRIMARY KEY , character_index NUMBER, name VARCHAR(100) , sheet_url VARCHAR(100) , picture_url VARCHAR(200) , player_id VARCHAR(100) , xp NUMBER  );");
+        const response = await this.database.execute("CREATE TABLE characters ( character_id STRING PRIMARY KEY , character_index NUMBER, name VARCHAR(100) , sheet_url VARCHAR(100) , picture_url VARCHAR(200) , player_id VARCHAR(100) , xp NUMBER, level_up_requirements_met INTEGER NOT NULL DEFAULT 0 );");
         await this.database.closeDatabase();
         return response;
     }

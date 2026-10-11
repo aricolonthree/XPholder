@@ -44,6 +44,8 @@ module.exports = {
 
         let config = {
             "levelUpMessage": "Congrats on leveling up!",
+            "levelUpRequirementsEnabled": "on",
+            "levelUpRequirementMode": "tiers",
             "levelUpChannelId": interaction.channelId,
             "moderationRoleId": moderationRole.id,
             "approveLevel": 1,

@@ -3,7 +3,7 @@ const { ActionRowBuilder, ButtonBuilder, EmbedBuilder } = require('discord.js');
 
 
 const { XPHOLDER_COLOUR, XPHOLDER_ICON_URL, DEV_SERVER_URL, XPHOLDER_LEVEL_UP_COLOUR, XPHOLDER_RETIRE_COLOUR, XPHOLDER_APPROVE_COLOUR } = require("../../config.json");
-const { getLevelInfo, getProgressionBar, awardCXPs } = require("../../utils")
+const { getCharacterLevelInfo, getRequirementStatus, getProgressionBar, awardCXPs, syncCharacterTierRole } = require("../../utils")
 
 
 module.exports = {
@@ -80,7 +80,7 @@ module.exports = {
 
         // some more inits
         const oldXp = character["xp"];
-        const oldLevelInfo = getLevelInfo(guildService.levels, oldXp)
+        const oldLevelInfo = getCharacterLevelInfo(guildService.levels, character, guildService.config)
 
         /*
         ------------
@@ -102,10 +102,10 @@ module.exports = {
                 character["xp"] += value;
                 break;
             case "set_cxp":
-                character["xp"] = awardCXPs(0, value, guildService.levels);
+                character["xp"] = awardCXPs(0, value, guildService.levels, character, guildService.config);
                 break;
             case "give_cxp":
-                character["xp"] = awardCXPs(character["xp"], value, guildService.levels);
+                character["xp"] = awardCXPs(character["xp"], value, guildService.levels, character, guildService.config);
                 break;
         }
 
@@ -116,7 +116,7 @@ module.exports = {
         */
         // useful inits
         const newXp = character["xp"];
-        const newLevelInfo = getLevelInfo(guildService.levels, newXp);
+        const newLevelInfo = getCharacterLevelInfo(guildService.levels, character, guildService.config);
         const progressBar = getProgressionBar(newLevelInfo["levelXp"], newLevelInfo["xpToNext"]);
 
         // giving useful information
@@ -129,7 +129,7 @@ module.exports = {
             .setDescription(memo)
             .setFooter({ text: `Like the bot? Click the title to visit the dev server!` })
             .setThumbnail((character["picture_url"] != "" && character["picture_url"] !== "null") ? character["picture_url"] : XPHOLDER_ICON_URL)
-            .setURL(DEV_SERVER_URL)
+            .setURL(DEV_SERVER_URL || null)
 
         let levelFieldName = "Level";
         let levelFieldValue = newLevelInfo["level"];
@@ -186,11 +186,14 @@ module.exports = {
                 break;
         };
 
+        awardEmbed.addFields({ name: "Level-Up Requirement", value: getRequirementStatus(guildService.levels, character, guildService.config) });
+
         /*
         ---------------
         POSTING REQUEST
         ---------------
         */
+        let roleWarning;
         if (guildService.config["allowPlayerManageXp"] == "on") {
             await awardChannel.send({ content: `${player} <@&${guildService.config["moderationRoleId"]}>`, embeds: [awardEmbed] });
             /*
@@ -214,6 +217,11 @@ module.exports = {
             };
 
             await guildService.setCharacterXP(characterSchema);
+            try {
+                await syncCharacterTierRole(guildService, await guild.members.fetch(player.id), await guildService.getCharacter(character.character_id));
+            } catch (error) {
+                roleWarning = "XP was saved, but I could not update the tier role. Check my role permissions and use /xp → Set.";
+            }
         } else {
             const requestButtons = new ActionRowBuilder()
                 .addComponents(
@@ -232,7 +240,7 @@ module.exports = {
             createButtonEvents(guildService, requestMessage, character, (newXp - oldXp), awardChannel, awardEmbed, player)
         }
 
-        await interaction.editReply("Success!");
+        await interaction.editReply(roleWarning || "Success!");
     },
 };
 
@@ -262,6 +270,21 @@ function createButtonEvents(guildService, requestMessage, character, deltaXp, co
                     awardEmbed.setColor(XPHOLDER_APPROVE_COLOUR)
 
                     await guildService.updateCharacterXP(character, deltaXp);
+                    const updatedCharacter = await guildService.getCharacter(character.character_id);
+                    const currentConfig = await guildService.loadInit("config", "name", "value");
+                    guildService.config = currentConfig;
+                    const currentLevel = getCharacterLevelInfo(guildService.levels, updatedCharacter, currentConfig);
+                    awardEmbed.setFields(awardEmbed.data.fields.filter(field => !["Level", "Level Up!", "Progress", "Level-Up Requirement"].includes(field.name)));
+                    awardEmbed.addFields(
+                        { name: "Level", value: currentLevel.level, inline: true },
+                        { name: "Progress", value: getProgressionBar(currentLevel.levelXp, currentLevel.xpToNext) },
+                        { name: "Level-Up Requirement", value: getRequirementStatus(guildService.levels, updatedCharacter, currentConfig) }
+                    );
+                    try {
+                        await syncCharacterTierRole(guildService, await player.guild.members.fetch(player.id), updatedCharacter);
+                    } catch (error) {
+                        awardEmbed.addFields({ name: "Tier Role", value: "XP was saved, but the tier role could not be updated. Check my role permissions and use /xp → Set." });
+                    }
 
                     await btnInteraction.update({ embeds: [awardEmbed], components: [] });
                     await player.send({ embeds: [awardEmbed]});

@@ -30,6 +30,15 @@ module.exports = {
             .setDescription("A Role Which Allows Users To Use The Mod Roles")
             .setRequired(false))
 
+        .addStringOption(option => option
+            .setName("level_up_requirements")
+            .setDescription("Require moderator-awarded level-up requirements (default: On)")
+            .addChoices({ name: "On", value: "on" }, { name: "Off", value: "off" }))
+        .addStringOption(option => option
+            .setName("level_up_requirement_mode")
+            .setDescription("Which level-ups need a requirement (default: Tier boundaries)")
+            .addChoices({ name: "Tier boundaries", value: "tiers" }, { name: "Every level", value: "all" }))
+
         .addIntegerOption(option => option
             .setName("number_of_characters")
             .setDescription("The Amount Of Characters A Person Can Have ( 1 -> 10 )")
@@ -124,6 +133,8 @@ module.exports = {
         const levelUpMessage = interaction.options.getString("level_up_message");
         const levelUpChannel = interaction.options.getChannel("level_up_channel");
         const moderationRole = interaction.options.getRole("moderation_role");
+        const levelUpRequirements = interaction.options.getString("level_up_requirements");
+        const levelUpRequirementMode = interaction.options.getString("level_up_requirement_mode");
         const numberOfCharacters = interaction.options.getInteger("number_of_characters");
         const roleBonus = interaction.options.getString("role_bonus");
         const tier1Role = interaction.options.getRole("tier_1_role");
@@ -147,6 +158,8 @@ module.exports = {
         if (levelUpMessage) { config["levelUpMessage"] = levelUpMessage; }
         if (levelUpChannel) { config["levelUpChannelId"] = levelUpChannel.id; }
         if (moderationRole) { config["moderationRoleId"] = moderationRole.id; }
+        if (levelUpRequirements) { config.levelUpRequirementsEnabled = levelUpRequirements; }
+        if (levelUpRequirementMode) { config.levelUpRequirementMode = levelUpRequirementMode; }
         if (numberOfCharacters) {
             for (let index = 1; index <= MAX_CHARS; index++) {
                 if (index <= numberOfCharacters) {

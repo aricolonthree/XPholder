@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { sqlInjectionCheck } = require('../../utils');
-const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+const { requirementMask } = require('../../progression');
 
 const { XPHOLDER_COLOUR, XPHOLDER_ICON_URL, DEV_SERVER_URL } = require("../../config.json");
 
@@ -39,7 +39,7 @@ module.exports = {
         const response = await fetch(csvFile.url);
 
         const csvContent = await response.text();
-        const csvRows = csvContent.split('\n');
+        const csvRows = csvContent.replace(/\r\n/g, '\n').trimEnd().split('\n');
         const csvHeaders = csvRows[0].split(',');
 
         /*
@@ -82,6 +82,12 @@ module.exports = {
                 "xp": csvData["xp"]
             };
 
+            // Old exports omit this column. Preserve existing awards in that case;
+            // newly imported characters start without any requirements awarded.
+            if (csvData.level_up_requirements_met !== undefined) {
+                character.level_up_requirements_met = requirementMask(csvData.level_up_requirements_met);
+            }
+
             let existingCharacter = await guildService.getCharacter(`${character["character_id"]}`);
 
             if (!existingCharacter) {
@@ -89,6 +95,9 @@ module.exports = {
             }else{
                 await guildService.updateCharacterInfo(character);
                 await guildService.setCharacterXP(character);
+                if (character.level_up_requirements_met !== undefined) {
+                    await guildService.setCharacterRequirements(character);
+                }
             }
             
         }

@@ -97,6 +97,7 @@ module.exports = {
             xp             : NUMBER
         */
         const updatedCharacter = {
+            ...character,
             "character_id": `${player.id}-${characterNumber}`,
             "character_index": `${characterNumber}`,
             "name": characterName,

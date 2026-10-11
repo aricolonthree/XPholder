@@ -7,8 +7,8 @@ const sqlite3 = require("sqlite3");
 const { guildService } = require("./xpholder/services/guild");
 const { sqlLite3DatabaseService } = require("./xpholder/database/sqlite");
 
-const { getActiveCharacterIndex, getXp, getRoleMultiplier, getLevelInfo, getTier, logCommand, logError } = require("./xpholder/utils");
-const { XPHOLDER_COLOUR, XPHOLDER_ICON_URL } = require("./xpholder/config.json")
+const { getActiveCharacterIndex, getXp, getRoleMultiplier, logCommand, logError } = require("./xpholder/utils");
+const { updateCharacterXpAndMessage } = require("./xpholder/services/characterXp");
 
 /*
 -----------------------
@@ -190,57 +190,6 @@ client.on('messageCreate', async message => {
 
     } catch (error) { console.log(error); }
 });
-
-async function updateCharacterXpAndMessage(guild, gService, character, xp, player){
-    try{
-        await gService.updateCharacterXP(character, xp);
-
-        const oldLevelInfo = getLevelInfo(gService.levels, character["xp"]);
-        const newLevelInfo = getLevelInfo(gService.levels, character["xp"] + xp);
-
-        if (oldLevelInfo["level"] != newLevelInfo["level"]) {
-            const newTier = getTier(newLevelInfo["level"]);
-
-            const tierRoles = []
-            for (let tierIndex = 1; tierIndex <= 4; tierIndex++){
-                if (tierIndex == newTier["tier"]){ continue; }
-                tierRoles.push(await guild.roles.fetch(gService.config[`tier${tierIndex}RoleId`]));
-            }
-
-            const newTierRole = await guild.roles.fetch(gService.config[`tier${newTier["tier"]}RoleId`]);
-
-            try{
-                const updatedPlayer = await player.roles.remove(tierRoles);
-                await updatedPlayer.roles.add(newTierRole);
-            }catch(error){
-                console.log(error);
-            }
-            
-
-            let awardChannel;
-            try {
-                awardChannel = await guild.channels.fetch(gService.config["levelUpChannelId"]);
-            } catch (error) { return; }
-
-            let levelUpEmbed = new EmbedBuilder()
-                .setTitle(`${character["name"]} Leveled Up`)
-                .setFields(
-                    { name: "Level Up!", value: `${oldLevelInfo["level"]} --> **${newLevelInfo["level"]}**`, inline: true },
-                    { name: "Total Character XP", value: `${Math.floor(character["xp"] + xp)}`, inline: true },
-                    { name: "Tier", value: `<@&${gService.config[`tier${newTier["tier"]}RoleId`]}>`, inline: true }
-                )
-                .setThumbnail((character["picture_url"] != "" && character["picture_url"] !== "null")? character["picture_url"] : XPHOLDER_ICON_URL )
-                .setColor(XPHOLDER_COLOUR)
-                .setFooter({ text: "You can view your characters with /xp" })
-
-            if (character["sheet_url"] != "") {
-                levelUpEmbed.setURL(character["sheet_url"]);
-            }
-
-            awardChannel.send({ content: `${player}`, embeds: [levelUpEmbed] });
-        }
-    }catch(error){ console.log(error) }
-}
 
 /*
 ---------------------

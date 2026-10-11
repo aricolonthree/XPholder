@@ -129,11 +129,13 @@ ${configObj.approveMessage}`)
             { inline: true, name: "XP Share", value: `<@&${configObj.xpShareRoleId}>` },
             { inline: true, name: "XP Per-Post Divisor", value: `${configObj.xpPerPostDivisor}` },
             { inline: true, name: "XP Per-Post Formula", value: `${configObj.xpPerPostFormula}` },
+            { inline: true, name: "Level-Up Requirements", value: configObj.levelUpRequirementsEnabled ?? "on" },
+            { inline: true, name: "Requirement Mode", value: configObj.levelUpRequirementMode === "all" ? "Every level" : "Tier boundaries (5, 11, 17)" },
         )
         .setFooter({ text: `Dont Like What You See? Try : /edit_config` })
         .setThumbnail(XPHOLDER_ICON_URL)
         .setColor(XPHOLDER_COLOUR)
-        .setURL(DEV_SERVER_URL);
+        .setURL(DEV_SERVER_URL || null);
 }
 
 async function buildChannelEmbed(channelObj, interaction, guildService) {
