@@ -80,7 +80,8 @@ module.exports = {
         try {
             awardChannel = await guild.channels.fetch(guildService.config["levelUpChannelId"]);
         } catch (error) {
-            await interaction.editReply("Sorry, but I can't find the **level_up_channel**.\nPlease ask a moderator to set a new **level_up_channel** with `/edit_config`.");
+            const owner = await guild.members.fetch(guild.ownerId);
+            await interaction.editReply(`Sorry, but I can't find the **level_up_channel**.\nPlease contact ${owner} and ask them to set a new **level_up_channel** with : \`/edit_config\``);
             return;
         }
 

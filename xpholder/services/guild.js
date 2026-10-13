@@ -1,12 +1,10 @@
 const { listOfObjsToObj } = require("../utils")
 const { LEVELS } = require("../config.json")
-const { factionService } = require('./factions');
 const { REQUIREMENT_DEFAULTS, getLevelInfo, requirementBit, requirementMask, requirementsThroughLevel } = require("../progression");
 
 class guildService {
     constructor(database) {
         this.database = database;
-        this.factions = new factionService(database);
 
         this.xpCache = {};
         this.registered = false;
@@ -25,7 +23,6 @@ class guildService {
         this.config = await this.loadInit("config", "name", "value");
         this.roles = await this.loadInit("roles", "role_id", "xp_bonus");
         this.channels = await this.loadInit("channels", "channel_id", "xp_per_post");
-        await this.factions.init();
     }
 
     async loadInit(table, primaryKey, value) {
@@ -285,7 +282,6 @@ class guildService {
         await this.createConfigTable();
         await this.createLevelsTable();
         await this.createRolesTable();
-        await this.factions.init();
     }
 
     async createChannelsTable() {

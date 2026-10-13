@@ -33,17 +33,17 @@ class sqlLite3DatabaseService {
         });
     }
 
-    async getAll(query, params = []) {
+    async getAll(query) {
         return await new Promise((resolve, reject) => {
-            this.database.all(query, params, (err, data) => {
+            this.database.all(query, (err, data) => {
                 if (err) { console.error(err.message); resolve(false); return; }
                 resolve(data);
             })
         });
     }
-    async get(query, params = []) {
+    async get(query) {
         return await new Promise((resolve, reject) => {
-            this.database.get(query, params, (err, data) => {
+            this.database.get(query, (err, data) => {
                 if (err) { console.error(err.message); resolve(false); return; }
                 resolve(data);
             })
