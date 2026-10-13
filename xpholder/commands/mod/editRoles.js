@@ -9,9 +9,9 @@ module.exports = {
             .setName("role")
             .setDescription("A Role To Be Added / Removed")
             .setRequired(true))
-        .addIntegerOption(option => option
+        .addNumberOption(option => option
             .setName("bonus")
-            .setDescription("Multiplyer To Awareded XP ( negatives remove from database )")
+            .setDescription("XP multiplier, e.g. 1.5; 0 freezes XP, negative values remove the role bonus")
             .setRequired(true))
             
         .addBooleanOption(option => option
@@ -37,7 +37,7 @@ module.exports = {
         --------------
         */
         const role = interaction.options.getRole("role")
-        const bonus = interaction.options.getInteger("bonus")
+        const bonus = interaction.options.getNumber("bonus")
 
         await guildService.updateRole(role.id, bonus);
 

@@ -61,10 +61,10 @@ function getCharacterLevelInfo(levels, character, config = {}) {
 }
 
 function getRequirementStatus(levels, character, config = {}) {
-    if (config.levelUpRequirementsEnabled === "off") { return "Off — XP determines your level."; }
+    if (config.levelUpRequirementsEnabled === "off") { return "Off"; }
     const info = getCharacterLevelInfo(levels, character, config);
     if (info.blockedAtLevel) {
-        return `Waiting for the level ${info.blockedAtLevel} requirement. XP continues accumulating. A moderator can use /award_level_up.`;
+        return `Waiting for the level ${info.blockedAtLevel} requirement.`;
     }
     for (let level = Number(info.level) + 1; level <= 20; level++) {
         if (requiresLevelUpRequirement(level, config)) {

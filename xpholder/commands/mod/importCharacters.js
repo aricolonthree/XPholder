@@ -7,11 +7,11 @@ const { XPHOLDER_COLOUR, XPHOLDER_ICON_URL, DEV_SERVER_URL } = require("../../co
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('import_characters_csv')
-        .setDescription('CSV Loads Characters')
+        .setDescription('CSV Loads Characters [ MOD ]')
     
         .addAttachmentOption(option => option
             .setName("csv_file")
-            .setDescription("File Created From /export_characters_csv [ OWNER ]")
+            .setDescription("File Created From /export_characters_csv")
             .setRequired(true))
 
         .addBooleanOption(option => option
@@ -25,8 +25,9 @@ module.exports = {
         VALIDATION
         ----------
         */
-        if (interaction.user.id != interaction.guild.ownerId) {
-            await interaction.editReply("Sorry, but you are not the owner of the server, and can not use this command.")
+        if (!guildService.isMod(interaction.member._roles) &&
+            interaction.user.id != interaction.guild.ownerId) {
+            await interaction.editReply("Only moderators and the server owner can use this command.");
             return;
         }
         /*

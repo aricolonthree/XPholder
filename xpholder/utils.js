@@ -148,16 +148,13 @@
 		*/
 		let roleMultiplier = 1;
 		switch (roleBonus) {
-			case "highest":
-				for (const roleId of listOfPlayerRoles) {
-					// if the players role is not in the object of role bonus, skip
-					if (!(roleId in collectionOfGuildRoles)) { continue; }
-					// if the player does have a role that is in the collection, and the role is greater than the current role, set the current role to that
-					if (collectionOfGuildRoles[roleId] > roleMultiplier) { roleMultiplier = collectionOfGuildRoles[roleId]; }
-					// if the player has the xp freeze role, or any other role with 0 xp bonus, to set the role and return
-					else if (collectionOfGuildRoles[roleId] == 0) { roleMultiplier = 0; break; }
-				}
+			case "highest": {
+				const multipliers = listOfPlayerRoles.filter(roleId => roleId in collectionOfGuildRoles)
+					.map(roleId => Number(collectionOfGuildRoles[roleId]));
+				// Use 1 only when no bonus applies; fractional multipliers can reduce XP.
+				if (multipliers.length) { roleMultiplier = multipliers.includes(0) ? 0 : Math.max(...multipliers); }
 				break;
+			}
 			case "sum":
 				for (const roleId of listOfPlayerRoles) {
 					// if the players role is not in the object of role bonus, skip
@@ -261,7 +258,7 @@
 				{ inline: false, name: `Progress`, value: `${progress}` },
 				{ inline: false, name: "Level-Up Requirement", value: getRequirementStatus(guildService.levels, characterObj, guildService.config) }
 			)
-			.setFooter({ text: `Dont Like What You See? Try /edit_character (${characterObj["character_index"]}/${guildService.config["characterCount"]})` })
+			.setFooter({ text: `Character ${characterObj["character_index"]} of ${guildService.config["characterCount"]}` })
 			.setColor(XPHOLDER_COLOUR);
 
 		if (characterObj["sheet_url"] != "") {
@@ -326,7 +323,7 @@
 		const loggingChannel = await testingServer.channels.fetch(LOGING_CHANNEL_ID);
 
 		// SENDING LOG EMBED
-		loggingChannel.send({
+		await loggingChannel.send({
 			embeds: [logEmbed]
 		});
 	}
@@ -346,7 +343,7 @@
 		const testingServer = await client.guilds.fetch(TESTING_SERVER_ID);
 		const loggingChannel = await testingServer.channels.fetch(ERROR_CHANNEL_ID);
 			// REPORTING THE ERROR
-		loggingChannel.send({
+		await loggingChannel.send({
 			embeds: [xplogEmbed]
 		});
 	}
@@ -378,7 +375,7 @@
 		const loggingChannel = await testingServer.channels.fetch(ERROR_CHANNEL_ID);
 
 		// REPORTING THE ERROR
-		loggingChannel.send({
+		await loggingChannel.send({
 			embeds: [logErrorEmbed]
 		});
 	}

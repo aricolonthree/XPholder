@@ -3,7 +3,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('edit_levels')
-        .setDescription('Changes XP Needed To Level Up In Server Database! [ OWNER ]')
+        .setDescription('Changes XP Needed To Level Up In Server Database! [ MOD ]')
 
         .addIntegerOption(option => option
             .setName("level")
@@ -28,8 +28,9 @@ module.exports = {
         VALIDATION
         ----------
         */
-        if (interaction.user.id != interaction.guild.ownerId) {
-            await interaction.editReply("Sorry, but you are not the owner of the server, and can not use this command.")
+        if (!guildService.isMod(interaction.member._roles) &&
+            interaction.user.id != interaction.guild.ownerId) {
+            await interaction.editReply("Only moderators and the server owner can use this command.");
             return;
         }
         /*

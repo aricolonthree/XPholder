@@ -1,7 +1,7 @@
 const dotenv = require('dotenv');
 const fs = require('fs');
 
-const { Client, Collection, GatewayIntentBits, Partials, EmbedBuilder, InteractionType, ChannelType } = require('discord.js');
+const { Client, Collection, GatewayIntentBits, Partials, EmbedBuilder, InteractionType, ChannelType, Events, MessageFlags } = require('discord.js');
 const sqlite3 = require("sqlite3");
 
 const { guildService } = require("./xpholder/services/guild");
@@ -9,6 +9,7 @@ const { sqlLite3DatabaseService } = require("./xpholder/database/sqlite");
 
 const { getActiveCharacterIndex, getXp, getRoleMultiplier, logCommand, logError } = require("./xpholder/utils");
 const { updateCharacterXpAndMessage } = require("./xpholder/services/characterXp");
+const { HomebrewVoting } = require('./xpholder/services/homebrewVoting');
 
 /*
 -----------------------
@@ -16,6 +17,8 @@ LOADING ENV VARS (.env)
 -----------------------
 */
 dotenv.config();
+fs.mkdirSync('./guilds', { recursive: true });
+const testGuildId = process.env.TEST_GUILD_ID;
 /*
 ---------------------------
 LOADING DISCORD PREMISSIONS
@@ -33,6 +36,13 @@ const client = new Client({
     partials: [Partials.Channel]
 });
 client.commands = new Collection();
+client.homebrewVoting = new HomebrewVoting(client, { testGuildId });
+client.on(Events.ThreadCreate, (thread, newlyCreated) => {
+    client.homebrewVoting.onThreadCreate(thread, newlyCreated).catch(error => client.homebrewVoting.report(error, thread.id));
+});
+client.on(Events.ThreadUpdate, (oldThread, thread) => {
+    client.homebrewVoting.onThreadUpdate(oldThread, thread).catch(error => client.homebrewVoting.report(error, thread.id));
+});
 /*
 ----------------
 LOADING COMMANDS
@@ -41,7 +51,6 @@ LOADING COMMANDS
 const commandsPath = [
     "everyone",
     "mod",
-    "owner",
 ];
 for (const path of commandsPath) {
     const commandCollection = fs.readdirSync(`./xpholder/commands/${path}`).filter(file => file.endsWith('.js'));
@@ -56,19 +65,21 @@ for (const path of commandsPath) {
 BOT COMMANDS
 ------------
 */
-client.once('ready', () => {
+client.once(Events.ClientReady, () => {
     //clearGuildCache();
-    console.log("ready");
-    console.log(client.commands);
+    console.log(`Ready: ${client.user.tag}; ${client.commands.size} commands loaded.`);
+    if (testGuildId) { console.log(`Testing restricted to guild ${testGuildId}.`); }
+    client.homebrewVoting.start().catch(error => client.homebrewVoting.report(error, 'startup'));
 });
 
 client.on('interactionCreate', async interaction => {
+    if (testGuildId && interaction.guildId !== testGuildId) { return; }
     /*
     -------------------------------------
     VALIDATIONS FOR INTERACTION EXECUTION
     -------------------------------------
     */
-    if (!interaction.isCommand() ||
+    if ((!interaction.isCommand() && !interaction.isAutocomplete()) ||
         !interaction.inGuild()) return;
     const command = client.commands.get(interaction.commandName);
     if (!command) return;
@@ -78,15 +89,18 @@ client.on('interactionCreate', async interaction => {
     const gService = new guildService(
         await new sqlLite3DatabaseService(sqlite3, `./guilds/${guildId}.db`)
     )
-    await gService.init();
-    if (!await gService.isRegistered() && command.data.name != "register") {
-        // Try Catch on the reply, because this is a restful call, and errors can be found
+    if (interaction.isAutocomplete()) {
         try {
-            await interaction.reply({
-                content: `Sorry, but your server is not registerd, please contact <@${interaction.guild.ownerId}> and ask them todo \`/register\`.`,
-                ephemeral: true
-            });
-        } catch (error) { };
+            // Typing suggestions must not run the XP schema migration on every keypress.
+            if (command.autocomplete && await gService.isRegistered()) {
+                await gService.factions.init();
+                gService.config = await gService.loadInit('config', 'name', 'value');
+                await command.autocomplete(gService, interaction);
+            } else { await interaction.respond([]); }
+        } catch (error) {
+            console.log(error);
+            if (!interaction.responded) { await interaction.respond([]); }
+        }
         return;
     }
     /*
@@ -95,21 +109,27 @@ client.on('interactionCreate', async interaction => {
     -----------------
     */
     try {
-        logCommand(interaction);
-    } catch (error) {
-        console.log(error);
-    }
-    try {
-        let is_public = !interaction.options.getBoolean("public");
-        await interaction.deferReply({ ephemeral: is_public });
+        const ephemeral = command.private || !interaction.options.getBoolean("public");
+        // Acknowledge before database work, including first-use schema migration.
+        await interaction.deferReply({ flags: ephemeral ? MessageFlags.Ephemeral : undefined });
+        await gService.init();
+        if (!gService.registered && command.data.name !== 'register') {
+            await interaction.editReply('This server is not registered. A staff member with Moderate Members, Manage Server, or Administrator permission can run `/register`.');
+            return;
+        }
+        // Faction inputs can identify hidden factions even when the reply is public.
+        if (!command.private && command.log !== false) { logCommand(interaction).catch(error => console.error('Command logging failed:', error.message)); }
         await command.execute(gService, interaction);
     } catch (error) {
         try {
-            logError(interaction, error);
+            if (!command.private && command.log !== false) { logError(interaction, error).catch(loggingError => console.error('Error logging failed:', loggingError.message)); }
         } catch (error) {
             console.log(error);
         }
         console.log(error);
+        if (interaction.deferred || interaction.replied) {
+            await interaction.editReply({ content: 'Could not complete this command. Please try again.', embeds: [], components: [] }).catch(() => {});
+        }
     }
 });
 
@@ -120,6 +140,7 @@ XP PER POST
 */
 client.on('messageCreate', async message => {
     try {
+        if (testGuildId && message.guildId !== testGuildId) { return; }
 
         /*
         ----------

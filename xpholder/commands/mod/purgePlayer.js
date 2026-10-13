@@ -3,7 +3,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('purge_player')
-        .setDescription('*WARNING* Deletes all data on a player [OWNER]')
+        .setDescription('*WARNING* Deletes all data on a player [ MOD ]')
         .addUserOption(option => option
             .setName("player")
             .setDescription("The Player Is Getting Purged")
@@ -19,8 +19,9 @@ module.exports = {
         VALIDATION
         ----------
         */
-        if (interaction.user.id != interaction.guild.ownerId) {
-            await interaction.editReply("Sorry, but you are not the owner of the server, and can not use this command.")
+        if (!guildService.isMod(interaction.member._roles) &&
+            interaction.user.id != interaction.guild.ownerId) {
+            await interaction.editReply("Only moderators and the server owner can use this command.");
             return;
         }
         /*
